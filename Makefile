@@ -30,6 +30,8 @@ install: release
 		helm dep up && \
 		helm upgrade ${PREVIEW_NAME} . \
 			--install \
+			--set global.application.name=default-app \
+			--set global.keycloak.clientSecret=$(shell uuidgen) \
 			--set global.gateway.http=false \
 			--set global.gateway.domain=${GLOBAL_GATEWAY_DOMAIN} \
 			--values $(MESSAGING_BROKER)-values.yaml \

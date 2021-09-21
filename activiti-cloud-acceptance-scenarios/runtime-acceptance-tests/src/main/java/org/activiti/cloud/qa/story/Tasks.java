@@ -17,8 +17,10 @@
 package org.activiti.cloud.qa.story;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.awaitility.Awaitility.await;
 
+import feign.FeignException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -27,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import net.serenitybdd.core.Serenity;
 import net.thucydides.core.annotations.Steps;
+import net.thucydides.core.steps.StepEventBus;
 import org.activiti.api.model.shared.event.VariableEvent;
 import org.activiti.api.task.model.Task;
 import org.activiti.api.task.model.builders.TaskPayloadBuilder;
@@ -460,8 +463,19 @@ public class Tasks {
     }
 
     private void waitForTask(String currentTaskId) {
-        await().untilAsserted(() ->
-            assertThat(taskQuerySteps.getTaskById(currentTaskId)).isNotNull()
+        await().untilAsserted(() -> {
+                final Throwable throwable = catchThrowableOfType(
+                    () -> taskQuerySteps.getTaskById(currentTaskId),
+                    FeignException.class);
+                if (throwable != null) {
+                    //It's important to clear step failures after an Exception, otherwise,
+                    //the step will be marked to be skipped and any subsequent call to
+                    //taskQuerySteps will return mocks instead of calling the real endpoint.
+                    //Without clearing step failures the await block become useless.
+                    StepEventBus.getEventBus().clearStepFailures();
+                }
+                assertThat(throwable).isNull();
+            }
         );
     }
 
